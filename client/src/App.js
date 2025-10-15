@@ -104,7 +104,7 @@ function LandingPage() {
           </div>
         </div>
         
-        <footer className="landing-footer">
+        <div className="disclaimer-top-right">
           <div className="disclaimer-card">
             <div className="disclaimer-icon">⚠️</div>
             <div className="disclaimer-content">
@@ -112,7 +112,7 @@ function LandingPage() {
               <p>This tool is for educational purposes only and does not constitute medical advice. Always consult a healthcare professional for medical concerns.</p>
             </div>
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );
@@ -270,7 +270,7 @@ function SymptomForm({ setResult }) {
           </div>
         </main>
 
-        <footer className="home-footer">
+        <div className="disclaimer-top-right">
           <div className="disclaimer-card">
             <div className="disclaimer-icon">⚠️</div>
             <div className="disclaimer-content">
@@ -278,7 +278,7 @@ function SymptomForm({ setResult }) {
               <p>This tool is for educational purposes only and does not constitute medical advice. Always consult a healthcare professional for medical concerns.</p>
             </div>
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );
@@ -395,11 +395,11 @@ function ResultPage({ result }) {
         </div>
       </main>
       
-      <footer className="result-footer">
+      <div className="disclaimer-top-right">
         <div className="footer-warning">
           <p>⚠️ <strong>Important:</strong> This tool is for educational purposes only and does not constitute medical advice. Always consult a healthcare professional for medical concerns.</p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

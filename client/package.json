@@ -2,7 +2,6 @@
   "name": "healthcare-symptom-checker-client",
   "version": "1.0.0",
   "private": true,
-  "homepage": "https://Sriman04.github.io/Healthcare-Symptom-checker",
   "dependencies": {
     "axios": "^1.6.0",
     "react": "^18.2.0",
