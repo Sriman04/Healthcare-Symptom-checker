@@ -123,159 +123,409 @@ function SymptomForm({ setResult }) {
     symptoms: '',
     gender: '',
     severity: '',
-    duration: ''
+    duration: '',
+    age: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentStep, setCurrentStep] = useState(1);
+  const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors({ ...validationErrors, [name]: '' });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!form.symptoms.trim()) {
+      errors.symptoms = 'Please describe your symptoms';
+    } else if (form.symptoms.trim().length < 10) {
+      errors.symptoms = 'Please provide more detailed description (at least 10 characters)';
+    }
+    
+    if (!form.gender) {
+      errors.gender = 'Please select your gender';
+    }
+    
+    if (!form.severity) {
+      errors.severity = 'Please select symptom severity';
+    }
+    
+    if (!form.duration.trim()) {
+      errors.duration = 'Please specify duration';
+    }
+    
+    if (!form.age.trim()) {
+      errors.age = 'Please enter your age';
+    } else if (isNaN(form.age) || form.age < 1 || form.age > 120) {
+      errors.age = 'Please enter a valid age between 1 and 120';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
     setError('');
+    
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const res = await axios.post(`${apiUrl}/api/check-symptoms`, form);
+      console.log('Submitting to:', `${apiUrl}/api/check-symptoms`);
+      console.log('Form data:', form);
+      
+      const res = await axios.post(`${apiUrl}/api/check-symptoms`, form, {
+        timeout: 30000, // 30 second timeout
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Response received:', res.data);
       setResult(res.data.result);
       navigate('/result');
     } catch (err) {
-      setError('Failed to get response. Please try again.');
+      console.error('API Error:', err);
+      
+      let errorMessage = 'Failed to get response. Please try again.';
+      
+      if (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK') {
+        errorMessage = 'Unable to connect to the server. Please make sure the server is running on port 5000.';
+      } else if (err.response) {
+        // Server responded with error status
+        errorMessage = err.response.data?.message || err.response.data?.error || `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'No response from server. Please check your internet connection and try again.';
+      } else if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Request timeout. The server is taking too long to respond. Please try again.';
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const getProgressPercentage = () => {
+    const filledFields = Object.values(form).filter(value => value.trim() !== '').length;
+    return Math.round((filledFields / 5) * 100);
   };
 
   return (
-    <div className="home-page">
-      <nav className="navbar">
-        <div className="navbar-content">
-          <div className="navbar-brand">
-            <span className="brand-icon">🏥</span>
-            <span className="brand-text">Healthcare Symptom Checker</span>
+    <div className="symptom-form-page">
+      <nav className="modern-navbar">
+        <div className="navbar-container">
+          <button 
+            className="back-to-home-btn"
+            onClick={() => navigate('/')}
+            aria-label="Go back to home"
+          >
+            <span className="back-icon">←</span>
+            <span>Back</span>
+          </button>
+          
+          <div className="navbar-brand-center">
+            <div className="brand-icon-container">
+              <span className="brand-icon">🏥</span>
+            </div>
+            <div className="brand-content">
+              <h1 className="brand-title">Symptom Assessment</h1>
+              <p className="brand-subtitle">AI-powered health analysis</p>
+            </div>
           </div>
-          <div className="navbar-subtitle">Get AI-powered insights for your health concerns</div>
+          
+          <div className="progress-indicator">
+            <div className="progress-circle">
+              <svg className="progress-ring" width="50" height="50">
+                <circle
+                  className="progress-ring-background"
+                  stroke="#e2e8f0"
+                  strokeWidth="4"
+                  fill="transparent"
+                  r="20"
+                  cx="25"
+                  cy="25"
+                />
+                <circle
+                  className="progress-ring-fill"
+                  stroke="#4c51bf"
+                  strokeWidth="4"
+                  fill="transparent"
+                  r="20"
+                  cx="25"
+                  cy="25"
+                  strokeDasharray={`${2 * Math.PI * 20}`}
+                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - getProgressPercentage() / 100)}`}
+                />
+              </svg>
+              <span className="progress-text">{getProgressPercentage()}%</span>
+            </div>
+          </div>
         </div>
       </nav>
       
-      <div className="home-background">
-        <div className="floating-shapes">
-          <div className="shape shape-1"></div>
-          <div className="shape shape-2"></div>
-          <div className="shape shape-3"></div>
-          <div className="shape shape-4"></div>
-        </div>
-
-        <main className="home-main">
-          <div className="form-container">
-            <div className="form-header">
-              <h2>📋 Tell us about your symptoms</h2>
-              <p>Please provide detailed information for accurate analysis</p>
+      <div className="form-background">
+        <div className="form-background-pattern"></div>
+        
+        <main className="form-main">
+          <div className="form-card">
+            <div className="form-header-modern">
+              <div className="header-icon">📋</div>
+              <h2 className="form-title">Health Assessment Form</h2>
+              <p className="form-description">
+                Please provide accurate information about your symptoms. 
+                The more details you share, the better our AI can assist you.
+              </p>
             </div>
             
-            <form className="modern-form" onSubmit={handleSubmit}>
-              <div className="input-group">
-                <label className="input-label">
-                  <span className="label-icon">📝</span>
-                  Symptoms Description
-                </label>
-                <textarea 
-                  name="symptoms" 
-                  value={form.symptoms} 
-                  onChange={handleChange} 
-                  required 
-                  placeholder="Describe your symptoms in detail... (e.g., persistent cough, fever, headache)"
-                  className="modern-textarea"
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="input-group">
-                  <label className="input-label">
-                    <span className="label-icon">👤</span>
-                    Gender
-                  </label>
-                  <select 
-                    name="gender" 
-                    value={form.gender} 
-                    onChange={handleChange} 
-                    required
-                    className="modern-select"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+            <form className="enhanced-form" onSubmit={handleSubmit} noValidate>
+              {/* Symptoms Section */}
+              <div className="form-section">
+                <div className="section-header">
+                  <h3 className="section-title">
+                    <span className="section-icon">📝</span>
+                    Describe Your Symptoms
+                  </h3>
+                  <p className="section-subtitle">Be as specific as possible about what you're experiencing</p>
                 </div>
-
-                <div className="input-group">
-                  <label className="input-label">
-                    <span className="label-icon">⚡</span>
-                    Severity Level
+                
+                <div className="input-group-enhanced">
+                  <label className="enhanced-label" htmlFor="symptoms">
+                    Symptoms Description *
                   </label>
-                  <select 
-                    name="severity" 
-                    value={form.severity} 
-                    onChange={handleChange} 
-                    required
-                    className="modern-select"
-                  >
-                    <option value="">Select Severity</option>
-                    <option value="mild">🟢 Mild</option>
-                    <option value="moderate">🟡 Moderate</option>
-                    <option value="severe">🔴 Severe</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">
-                  <span className="label-icon">⏰</span>
-                  Duration
-                </label>
-                <input 
-                  name="duration" 
-                  value={form.duration} 
-                  onChange={handleChange} 
-                  required 
-                  placeholder="e.g., 3 days, 1 week, 2 hours"
-                  className="modern-input"
-                />
-              </div>
-
-              <button type="submit" disabled={loading} className="submit-button">
-                {loading ? (
-                  <div className="loading-container">
-                    <div className="loading-spinner"></div>
-                    <span className="loading-text">Analyzing Symptoms...</span>
+                  <div className="input-wrapper">
+                    <textarea 
+                      id="symptoms"
+                      name="symptoms" 
+                      value={form.symptoms} 
+                      onChange={handleChange} 
+                      placeholder="Example: I've had a persistent dry cough for 3 days, along with a mild headache and feeling tired. The cough is worse at night and doesn't produce any phlegm."
+                      className={`enhanced-textarea ${validationErrors.symptoms ? 'error' : ''}`}
+                      rows="5"
+                    />
+                    <div className="character-count">
+                      {form.symptoms.length}/500 characters
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <span className="button-icon">🔍</span>
-                    Analyze Symptoms
-                  </>
+                  {validationErrors.symptoms && (
+                    <div className="field-error">
+                      <span className="error-icon">⚠️</span>
+                      {validationErrors.symptoms}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Personal Information Section */}
+              <div className="form-section">
+                <div className="section-header">
+                  <h3 className="section-title">
+                    <span className="section-icon">👤</span>
+                    Personal Information
+                  </h3>
+                  <p className="section-subtitle">This helps provide more accurate recommendations</p>
+                </div>
+                
+                <div className="form-grid">
+                  <div className="input-group-enhanced">
+                    <label className="enhanced-label" htmlFor="age">
+                      Age *
+                    </label>
+                    <div className="input-wrapper">
+                      <input 
+                        id="age"
+                        type="number"
+                        name="age" 
+                        value={form.age} 
+                        onChange={handleChange} 
+                        placeholder="Enter your age"
+                        className={`enhanced-input ${validationErrors.age ? 'error' : ''}`}
+                        min="1"
+                        max="120"
+                      />
+                    </div>
+                    {validationErrors.age && (
+                      <div className="field-error">
+                        <span className="error-icon">⚠️</span>
+                        {validationErrors.age}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="input-group-enhanced">
+                    <label className="enhanced-label" htmlFor="gender">
+                      Gender *
+                    </label>
+                    <div className="input-wrapper">
+                      <select 
+                        id="gender"
+                        name="gender" 
+                        value={form.gender} 
+                        onChange={handleChange} 
+                        className={`enhanced-select ${validationErrors.gender ? 'error' : ''}`}
+                      >
+                        <option value="">Select gender</option>
+                        <option value="male">👨 Male</option>
+                        <option value="female">👩 Female</option>
+                        <option value="other">🏳️‍⚧️ Other</option>
+                      </select>
+                    </div>
+                    {validationErrors.gender && (
+                      <div className="field-error">
+                        <span className="error-icon">⚠️</span>
+                        {validationErrors.gender}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Symptom Details Section */}
+              <div className="form-section">
+                <div className="section-header">
+                  <h3 className="section-title">
+                    <span className="section-icon">📊</span>
+                    Symptom Details
+                  </h3>
+                  <p className="section-subtitle">Help us understand the severity and timeline</p>
+                </div>
+                
+                <div className="form-grid">
+                  <div className="input-group-enhanced">
+                    <label className="enhanced-label" htmlFor="severity">
+                      Severity Level *
+                    </label>
+                    <div className="severity-options">
+                      {[
+                        { value: 'mild', label: 'Mild', color: '#10b981', icon: '🟢', desc: 'Manageable discomfort' },
+                        { value: 'moderate', label: 'Moderate', color: '#f59e0b', icon: '🟡', desc: 'Noticeable impact on daily activities' },
+                        { value: 'severe', label: 'Severe', color: '#ef4444', icon: '🔴', desc: 'Significant distress or impairment' }
+                      ].map((option) => (
+                        <label key={option.value} className={`severity-option ${form.severity === option.value ? 'selected' : ''}`}>
+                          <input
+                            type="radio"
+                            name="severity"
+                            value={option.value}
+                            checked={form.severity === option.value}
+                            onChange={handleChange}
+                          />
+                          <div className="severity-content">
+                            <div className="severity-header">
+                              <span className="severity-icon">{option.icon}</span>
+                              <span className="severity-label">{option.label}</span>
+                            </div>
+                            <p className="severity-desc">{option.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {validationErrors.severity && (
+                      <div className="field-error">
+                        <span className="error-icon">⚠️</span>
+                        {validationErrors.severity}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="input-group-enhanced">
+                    <label className="enhanced-label" htmlFor="duration">
+                      Duration *
+                    </label>
+                    <div className="input-wrapper">
+                      <input 
+                        id="duration"
+                        name="duration" 
+                        value={form.duration} 
+                        onChange={handleChange} 
+                        placeholder="e.g., 3 days, 1 week, 2 hours"
+                        className={`enhanced-input ${validationErrors.duration ? 'error' : ''}`}
+                      />
+                      <div className="input-hint">
+                        Examples: "2 days", "1 week", "3 hours", "ongoing for months"
+                      </div>
+                    </div>
+                    {validationErrors.duration && (
+                      <div className="field-error">
+                        <span className="error-icon">⚠️</span>
+                        {validationErrors.duration}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button 
+                  type="submit" 
+                  disabled={loading || getProgressPercentage() < 100} 
+                  className="enhanced-submit-button"
+                >
+                  {loading ? (
+                    <div className="loading-state">
+                      <div className="enhanced-spinner"></div>
+                      <span>Analyzing your symptoms...</span>
+                    </div>
+                  ) : (
+                    <div className="submit-state">
+                      <span className="submit-icon">🔍</span>
+                      <span>Get AI Analysis</span>
+                      <span className="submit-arrow">→</span>
+                    </div>
+                  )}
+                </button>
+                
+                {getProgressPercentage() < 100 && (
+                  <p className="form-completion-hint">
+                    Complete all fields to enable analysis
+                  </p>
                 )}
-              </button>
+              </div>
             </form>
 
             {error && (
-              <div className="error-message">
-                <span className="error-icon">⚠️</span>
-                {error}
+              <div className="enhanced-error-message">
+                <div className="error-content">
+                  <span className="error-icon-large">⚠️</span>
+                  <div className="error-text">
+                    <h4>Something went wrong</h4>
+                    <p>{error}</p>
+                  </div>
+                </div>
+                <button 
+                  className="dismiss-error"
+                  onClick={() => setError('')}
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>
         </main>
 
-        <div className="disclaimer-top-right">
-          <div className="disclaimer-card">
-            <div className="disclaimer-icon">⚠️</div>
-            <div className="disclaimer-content">
-              <h3>Important Medical Disclaimer</h3>
-              <p>This tool is for educational purposes only and does not constitute medical advice. Always consult a healthcare professional for medical concerns.</p>
+        <div className="medical-disclaimer-modern">
+          <div className="disclaimer-container">
+            <div className="disclaimer-icon-container">
+              <span className="disclaimer-icon">⚠️</span>
+            </div>
+            <div className="disclaimer-text">
+              <h4>Important Medical Disclaimer</h4>
+              <p>This tool provides educational information only and does not replace professional medical advice. Always consult a qualified healthcare provider for medical concerns.</p>
             </div>
           </div>
         </div>
